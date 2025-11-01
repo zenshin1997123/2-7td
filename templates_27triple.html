@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2-7 Triple Draw (vs CPU)</title>
+    <style>
+        .card { display: inline-block; font-size: 2em; margin: 8px; cursor:pointer; border: 2px solid #ccc; border-radius:6px; padding:3px;background:#f5f5f5;width:80px;height:120px;vertical-align:bottom;}
+        .selected { background: #b6f7c3; border-color: #2e8b57; }
+        .cpu { color:#aaa; }
+        #result { font-size:1.5em; font-weight:bold; margin:18px 0;}
+        img.cardimg { width: 100%; height:100%; border-radius:5px; }
+        #new_game_btn { background:#0078d7; color:#ffffff; border:2px solid #005a9e; padding:10px 16px; border-radius:6px; font-weight:700; cursor:pointer; }
+        #new_game_btn:hover { background:#0a84ff; border-color:#0860c4; }
+        #new_game_btn:focus { outline:3px solid #ffd400; outline-offset:2px; }
+        .controls { margin: 12px 0; }
+        .actbtn { padding:8px 12px; margin-right:8px; border-radius:6px; border:1px solid #888; cursor:pointer; }
+        .actbtn:disabled { opacity:0.5; cursor:not-allowed; }
+        .status { margin: 10px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>2-7 Triple Draw (vs CPU)</h1>
+    <button id="new_game_btn" onclick="startGame()">新しいゲーム</button>
+    <div id="turn"></div>
+    <div class="status">
+        <div>ポット: <span id="pot">0</span></div>
+        <div>あなたのスタック: <span id="pstack">0</span> / CPUスタック: <span id="cstack">0</span></div>
+        <div>ストリート: <span id="street">0</span> / ドロー回数: <span id="drawcount">0</span></div>
+        <div>行動権: <span id="toact">-</span> / ベット中: <span id="betopen">-</span> / ドローフェーズ: <span id="drawphase">-</span></div>
+        <div>CPUの直近アクション: <span id="cpuact">-</span></div>
+        <div>配当: <span id="payout">-</span></div>
+    </div>
+    <h2>あなたの手札</h2>
+    <div id="player_hand"></div>
+    <div class="controls">
+        <button class="actbtn" id="btn_fold" onclick="doAction('fold')" disabled>フォールド</button>
+        <button class="actbtn" id="btn_check_call" onclick="doCheckCall()" disabled>チェック/コール</button>
+        <button class="actbtn" id="btn_bet_raise" onclick="doBetRaise()" disabled>ベット/レイズ</button>
+    </div>
+    <button id="draw_btn" onclick="draw()" disabled>選択したカードを交換</button>
+    <button id="pat_btn" onclick="standPat()" disabled>スタンドパット（交換しない）</button>
+    <button id="showdown_btn" onclick="showdown()" disabled>ショーダウン</button>
+    <button id="next_btn" onclick="startGame()" style="display:none; margin-left:8px;">次のゲームを開始</button>
+
+    <h2>CPUの手札</h2>
+    <div id="cpu_hand"></div>
+    <div id="result"></div>
+    <script>
+        let selected = [];
+        let lastState = null;
+        function showHand(cards, elemId, show=true) {
+            let html = '';
+            if(show){
+                cards.forEach((c, idx) => {
+                    html += `<span class=\"card${selected.includes(idx)?' selected':''}\" onclick=\"toggleSelect(${idx})\"><img class='cardimg' src=\"${c.img}\" alt=\"${c.text}\"></span>`;
+                });
+            }else{
+                for(let idx=0; idx<5; idx++){
+                    html += `<span class=\"card\"><img class='cardimg' src=\"https://deckofcardsapi.com/static/img/back.png\" alt=\"XX\"></span>`;
+                }
+            }
+            document.getElementById(elemId).innerHTML = html;
+        }
+        function toggleSelect(idx) {
+            if (selected.includes(idx)) {
+                selected = selected.filter(i => i !== idx);
+            } else {
+                if (selected.length >= 5) return;
+                selected.push(idx);
+            }
+            const nodes = document.getElementById('player_hand').children;
+            for(let i=0; i<5; i++) {
+                if(selected.includes(i)) nodes[i].classList.add('selected');
+                else nodes[i].classList.remove('selected');
+            }
+        }
+        function renderState(state){
+            lastState = state;
+            document.getElementById('pot').textContent = state.pot;
+            document.getElementById('pstack').textContent = state.player_stack;
+            document.getElementById('cstack').textContent = state.cpu_stack;
+            document.getElementById('street').textContent = state.street;
+            document.getElementById('drawcount').textContent = state.turn_draw;
+            document.getElementById('toact').textContent = state.to_act || '-';
+            document.getElementById('betopen').textContent = state.betting_open ? '中' : '終了';
+            document.getElementById('drawphase').textContent = state.draw_phase ? 'はい' : 'いいえ';
+            // アクションボタンの活性/ラベル
+            const myTurn = state.betting_open && state.to_act === 'player';
+            const acts = state.legal_actions || [];
+            document.getElementById('btn_fold').disabled = !(myTurn && acts.includes('fold'));
+            const checkCall = acts.includes('check') ? 'チェック' : (acts.includes('call') ? 'コール' : 'チェック/コール');
+            const betRaise = acts.includes('bet') ? 'ベット' : (acts.includes('raise') ? 'レイズ' : 'ベット/レイズ');
+            document.getElementById('btn_check_call').textContent = checkCall;
+            document.getElementById('btn_bet_raise').textContent = betRaise;
+            document.getElementById('btn_check_call').disabled = !myTurn || (!acts.includes('check') && !acts.includes('call'));
+            document.getElementById('btn_bet_raise').disabled = !myTurn || (!acts.includes('bet') && !acts.includes('raise'));
+            // ドロー可否
+            document.getElementById('draw_btn').disabled = !state.draw_phase;
+            document.getElementById('pat_btn').disabled = !state.draw_phase;
+            // CPUアクション表示
+            const actMap = {fold:'フォールド', check:'チェック', call:'コール', bet:'ベット', raise:'レイズ'};
+            document.getElementById('cpuact').textContent = actMap[state.cpu_last_action] || '-';
+            // ショーダウンは最終ストリートのベットが完全終了していて、かつハンド未決のとき
+            const canShowdown = (!state.betting_open && !state.draw_phase && state.street === 3 && !state.hand_over);
+            document.getElementById('showdown_btn').disabled = !canShowdown;
+            // 配当表示
+            let payoutText = '-';
+            if(state.last_payout){
+                if(state.last_payout.type === 'fold'){
+                    payoutText = (state.last_payout.winner === 'player' ? 'フォールド勝ち: あなたが' : 'フォールド勝ち: CPUが') + `${state.last_payout.amount} 獲得`;
+                }else if(state.last_payout.type === 'showdown'){
+                    payoutText = (state.last_payout.winner === 'player' ? 'ショーダウン勝ち: あなたが' : 'ショーダウン勝ち: CPUが') + `${state.last_payout.amount} 獲得`;
+                }else if(state.last_payout.type === 'split'){
+                    payoutText = `スプリット: それぞれ ${state.last_payout.amount} ずつ`;
+                }
+            }
+            document.getElementById('payout').textContent = payoutText;
+            // ハンド終了時に次ゲームボタン表示
+            document.getElementById('next_btn').style.display = state.hand_over ? 'inline-block' : 'none';
+        }
+        async function startGame() {
+            const r = await fetch('/start', {method:'POST'});
+            const data = await r.json();
+            selected = [];
+            showHand(data.player_hand, 'player_hand', true);
+            showHand([], 'cpu_hand', false);
+            document.getElementById('result').textContent = '';
+            renderState(data.state);
+        }
+        async function doActionRaw(action){
+            const r = await fetch('/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action })});
+            const data = await r.json();
+            if(data.error){
+                alert(data.error);
+                return;
+            }
+            showHand(data.player_hand, 'player_hand', true);
+            showHand([], 'cpu_hand', false);
+            renderState(data.state);
+        }
+        function doCheckCall(){
+            const acts = lastState?.legal_actions || [];
+            if(acts.includes('check')) return doActionRaw('check');
+            if(acts.includes('call')) return doActionRaw('call');
+        }
+        function doBetRaise(){
+            const acts = lastState?.legal_actions || [];
+            if(acts.includes('bet')) return doActionRaw('bet');
+            if(acts.includes('raise')) return doActionRaw('raise');
+        }
+        async function doAction(action){
+            return doActionRaw(action);
+        }
+        async function draw() {
+            if (!lastState?.draw_phase) return;
+            let keep = [];
+            for (let i=0;i<5;i++) if(!selected.includes(i)) keep.push(i);
+            const r = await fetch('/discard', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keep_indexes: keep })});
+            const data = await r.json();
+            selected = [];
+            showHand(data.player_hand, 'player_hand', true);
+            showHand([], 'cpu_hand', false);
+            renderState(data.state);
+        }
+        async function standPat(){
+            if (!lastState?.draw_phase) return;
+            const keep = [0,1,2,3,4];
+            const r = await fetch('/discard', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keep_indexes: keep })});
+            const data = await r.json();
+            selected = [];
+            showHand(data.player_hand, 'player_hand', true);
+            showHand([], 'cpu_hand', false);
+            renderState(data.state);
+        }
+        async function showdown() {
+            const r = await fetch('/showdown', {method:'POST'});
+            const data = await r.json();
+            showHand(data.player_hand, 'player_hand', true);
+            showHand(data.cpu_hand, 'cpu_hand', true);
+            document.getElementById('result').textContent = (
+                data.result==='win' ? 'あなたの勝ち！' : (data.result==='lose' ? 'CPUの勝ち！' : '引き分け')
+            );
+            renderState(data.state);
+        }
+    </script>
+</body>
+</html>
+
