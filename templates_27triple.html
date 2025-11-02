@@ -2,66 +2,491 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>2-7 Triple Draw (vs CPU)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2-7 Triple Draw Poker | vs CPU</title>
     <style>
-        .card { display: inline-block; font-size: 2em; margin: 8px; cursor:pointer; border: 2px solid #ccc; border-radius:6px; padding:3px;background:#f5f5f5;width:80px;height:120px;vertical-align:bottom;}
-        .selected { background: #b6f7c3; border-color: #2e8b57; }
-        .cpu { color:#aaa; }
-        #result { font-size:1.5em; font-weight:bold; margin:18px 0;}
-        img.cardimg { width: 100%; height:100%; border-radius:5px; }
-        #new_game_btn { background:#0078d7; color:#ffffff; border:2px solid #005a9e; padding:10px 16px; border-radius:6px; font-weight:700; cursor:pointer; }
-        #new_game_btn:hover { background:#0a84ff; border-color:#0860c4; }
-        #new_game_btn:focus { outline:3px solid #ffd400; outline-offset:2px; }
-        .controls { margin: 12px 0; }
-        .actbtn { padding:8px 12px; margin-right:8px; border-radius:6px; border:1px solid #888; cursor:pointer; }
-        .actbtn:disabled { opacity:0.5; cursor:not-allowed; }
-        .status { margin: 10px 0; font-size: 14px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f4c3a 0%, #1a5f4f 50%, #0d3b2d 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .poker-table {
+            background: radial-gradient(ellipse at center, #1a5f3f 0%, #0d3b2d 100%);
+            border: 8px solid #8b4513;
+            border-radius: 300px;
+            padding: 40px;
+            margin: 20px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 100px rgba(0,0,0,0.3);
+            position: relative;
+            min-height: 500px;
+        }
+        
+        .pot-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+            z-index: 10;
+            border: 3px solid #ffed4e;
+        }
+        
+        .pot-label {
+            font-size: 0.6em;
+            opacity: 0.8;
+        }
+        
+        .player-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .player-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .player-name.cpu {
+            color: #ff6b6b;
+        }
+        
+        .player-name.human {
+            color: #4ecdc4;
+        }
+        
+        .hand-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            width: 100px;
+            height: 140px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .card:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
+            z-index: 5;
+        }
+        
+        .card.selected {
+            transform: translateY(-20px) scale(1.1);
+            border: 3px solid #4ecdc4;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+        }
+        
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .status-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .stack-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .stack-box {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stack-box.player {
+            border-color: #4ecdc4;
+        }
+        
+        .stack-box.cpu {
+            border-color: #ff6b6b;
+        }
+        
+        .stack-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .stack-amount {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:hover:before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 239, 125, 0.5);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(235, 51, 73, 0.5);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-warning:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-info:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.5);
+        }
+        
+        .btn-new-game {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #000;
+            font-size: 1.1em;
+            padding: 15px 30px;
+            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.4);
+        }
+        
+        .btn-new-game:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.6);
+        }
+        
+        #result {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 15px;
+            animation: pulse 2s infinite;
+        }
+        
+        #result.win {
+            background: linear-gradient(135deg, rgba(56, 239, 125, 0.3), rgba(17, 153, 142, 0.3));
+            color: #38ef7d;
+        }
+        
+        #result.lose {
+            background: linear-gradient(135deg, rgba(235, 51, 73, 0.3), rgba(244, 92, 67, 0.3));
+            color: #eb3349;
+        }
+        
+        #result.draw {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 237, 78, 0.3));
+            color: #ffd700;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .cpu-area {
+            margin-top: 40px;
+        }
+        
+        .action-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-left: 10px;
+            font-size: 0.9em;
+        }
+        
+        .payout-display {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 237, 78, 0.2));
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            border: 2px solid rgba(255, 215, 0, 0.5);
+        }
+        
+        @media (max-width: 768px) {
+            .poker-table {
+                border-radius: 50px;
+                padding: 20px;
+            }
+            
+            .card {
+                width: 70px;
+                height: 98px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+        
+        .chip {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border: 3px solid #fff;
+            margin: 0 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
-    <h1>2-7 Triple Draw (vs CPU)</h1>
-    <button id="new_game_btn" onclick="startGame()">新しいゲーム</button>
-    <div id="turn"></div>
-    <div class="status">
-        <div>ポット: <span id="pot">0</span></div>
-        <div>あなたのスタック: <span id="pstack">0</span> / CPUスタック: <span id="cstack">0</span></div>
-        <div>ストリート: <span id="street">0</span> / ドロー回数: <span id="drawcount">0</span></div>
-        <div>行動権: <span id="toact">-</span> / ベット中: <span id="betopen">-</span> / ドローフェーズ: <span id="drawphase">-</span></div>
-        <div>CPUの直近アクション: <span id="cpuact">-</span></div>
-        <div>配当: <span id="payout">-</span></div>
+    <div class="container">
+        <div class="header">
+            <h1>2-7 Triple Draw Poker</h1>
+            <button class="btn btn-new-game" id="new_game_btn" onclick="startGame()">新しいゲーム</button>
+        </div>
+        
+        <div class="stack-display">
+            <div class="stack-box player">
+                <div class="stack-label">あなたのスタック</div>
+                <div class="stack-amount" id="pstack">100</div>
+            </div>
+            <div class="stack-box cpu">
+                <div class="stack-label">CPUスタック</div>
+                <div class="stack-amount" id="cstack">100</div>
+            </div>
+        </div>
+        
+        <div class="poker-table">
+            <div class="pot-display">
+                <div class="pot-label">ポット</div>
+                <div id="pot">0</div>
+            </div>
+            
+            <div class="cpu-area player-area">
+                <div class="player-name cpu">CPU</div>
+                <div class="hand-container" id="cpu_hand"></div>
+                <div class="action-badge" id="cpuact">-</div>
+            </div>
+            
+            <div class="player-area">
+                <div class="player-name human">あなた</div>
+                <div class="hand-container" id="player_hand"></div>
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">ストリート</div>
+                    <div class="status-value" id="street">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">ドロー回数</div>
+                    <div class="status-value" id="drawcount">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">行動権</div>
+                    <div class="status-value" id="toact">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">ベット状態</div>
+                    <div class="status-value" id="betopen">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-danger" id="btn_fold" onclick="doAction('fold')" disabled>フォールド</button>
+            <button class="btn btn-success" id="btn_check_call" onclick="doCheckCall()" disabled>チェック/コール</button>
+            <button class="btn btn-warning" id="btn_bet_raise" onclick="doBetRaise()" disabled>ベット/レイズ</button>
+            <button class="btn btn-info" id="draw_btn" onclick="draw()" disabled>カード交換</button>
+            <button class="btn btn-primary" id="pat_btn" onclick="standPat()" disabled>スタンドパット</button>
+            <button class="btn btn-warning" id="showdown_btn" onclick="showdown()" disabled>ショーダウン</button>
+            <button class="btn btn-new-game" id="next_btn" onclick="startGame()" style="display:none;">次のゲーム</button>
+        </div>
+        
+        <div class="payout-display" id="payout">配当情報がここに表示されます</div>
+        <div id="result"></div>
     </div>
-    <h2>あなたの手札</h2>
-    <div id="player_hand"></div>
-    <div class="controls">
-        <button class="actbtn" id="btn_fold" onclick="doAction('fold')" disabled>フォールド</button>
-        <button class="actbtn" id="btn_check_call" onclick="doCheckCall()" disabled>チェック/コール</button>
-        <button class="actbtn" id="btn_bet_raise" onclick="doBetRaise()" disabled>ベット/レイズ</button>
-    </div>
-    <button id="draw_btn" onclick="draw()" disabled>選択したカードを交換</button>
-    <button id="pat_btn" onclick="standPat()" disabled>スタンドパット（交換しない）</button>
-    <button id="showdown_btn" onclick="showdown()" disabled>ショーダウン</button>
-    <button id="next_btn" onclick="startGame()" style="display:none; margin-left:8px;">次のゲームを開始</button>
-
-    <h2>CPUの手札</h2>
-    <div id="cpu_hand"></div>
-    <div id="result"></div>
+    
     <script>
         let selected = [];
         let lastState = null;
+        
         function showHand(cards, elemId, show=true) {
             let html = '';
             if(show){
                 cards.forEach((c, idx) => {
-                    html += `<span class=\"card${selected.includes(idx)?' selected':''}\" onclick=\"toggleSelect(${idx})\"><img class='cardimg' src=\"${c.img}\" alt=\"${c.text}\"></span>`;
+                    html += `<div class="card${selected.includes(idx)?' selected':''}" onclick="toggleSelect(${idx})"><img class='cardimg' src="${c.img}" alt="${c.text}"></div>`;
                 });
             }else{
                 for(let idx=0; idx<5; idx++){
-                    html += `<span class=\"card\"><img class='cardimg' src=\"https://deckofcardsapi.com/static/img/back.png\" alt=\"XX\"></span>`;
+                    html += `<div class="card"><img class='cardimg' src="https://deckofcardsapi.com/static/img/back.png" alt="XX"></div>`;
                 }
             }
             document.getElementById(elemId).innerHTML = html;
         }
+        
         function toggleSelect(idx) {
+            if (!lastState?.draw_phase) return;
             if (selected.includes(idx)) {
                 selected = selected.filter(i => i !== idx);
             } else {
@@ -74,6 +499,7 @@
                 else nodes[i].classList.remove('selected');
             }
         }
+        
         function renderState(state){
             lastState = state;
             document.getElementById('pot').textContent = state.pot;
@@ -81,10 +507,9 @@
             document.getElementById('cstack').textContent = state.cpu_stack;
             document.getElementById('street').textContent = state.street;
             document.getElementById('drawcount').textContent = state.turn_draw;
-            document.getElementById('toact').textContent = state.to_act || '-';
-            document.getElementById('betopen').textContent = state.betting_open ? '中' : '終了';
-            document.getElementById('drawphase').textContent = state.draw_phase ? 'はい' : 'いいえ';
-            // アクションボタンの活性/ラベル
+            document.getElementById('toact').textContent = state.to_act === 'player' ? 'あなた' : (state.to_act === 'cpu' ? 'CPU' : '-');
+            document.getElementById('betopen').textContent = state.betting_open ? 'ベット中' : '終了';
+            
             const myTurn = state.betting_open && state.to_act === 'player';
             const acts = state.legal_actions || [];
             document.getElementById('btn_fold').disabled = !(myTurn && acts.includes('fold'));
@@ -94,30 +519,33 @@
             document.getElementById('btn_bet_raise').textContent = betRaise;
             document.getElementById('btn_check_call').disabled = !myTurn || (!acts.includes('check') && !acts.includes('call'));
             document.getElementById('btn_bet_raise').disabled = !myTurn || (!acts.includes('bet') && !acts.includes('raise'));
-            // ドロー可否
+            
             document.getElementById('draw_btn').disabled = !state.draw_phase;
             document.getElementById('pat_btn').disabled = !state.draw_phase;
-            // CPUアクション表示
+            
             const actMap = {fold:'フォールド', check:'チェック', call:'コール', bet:'ベット', raise:'レイズ'};
             document.getElementById('cpuact').textContent = actMap[state.cpu_last_action] || '-';
-            // ショーダウンは最終ストリートのベットが完全終了していて、かつハンド未決のとき
+            
             const canShowdown = (!state.betting_open && !state.draw_phase && state.street === 3 && !state.hand_over);
             document.getElementById('showdown_btn').disabled = !canShowdown;
-            // 配当表示
-            let payoutText = '-';
+            
+            let payoutText = '';
             if(state.last_payout){
                 if(state.last_payout.type === 'fold'){
-                    payoutText = (state.last_payout.winner === 'player' ? 'フォールド勝ち: あなたが' : 'フォールド勝ち: CPUが') + `${state.last_payout.amount} 獲得`;
+                    payoutText = `${state.last_payout.winner === 'player' ? 'あなたが' : 'CPUが'} ${state.last_payout.amount} チップ獲得（フォールド勝ち）`;
                 }else if(state.last_payout.type === 'showdown'){
-                    payoutText = (state.last_payout.winner === 'player' ? 'ショーダウン勝ち: あなたが' : 'ショーダウン勝ち: CPUが') + `${state.last_payout.amount} 獲得`;
+                    payoutText = `${state.last_payout.winner === 'player' ? 'あなたが' : 'CPUが'} ${state.last_payout.amount} チップ獲得（ショーダウン勝ち）`;
                 }else if(state.last_payout.type === 'split'){
-                    payoutText = `スプリット: それぞれ ${state.last_payout.amount} ずつ`;
+                    payoutText = `スプリット: それぞれ ${state.last_payout.amount} チップずつ獲得`;
                 }
+            } else {
+                payoutText = '配当情報がここに表示されます';
             }
             document.getElementById('payout').textContent = payoutText;
-            // ハンド終了時に次ゲームボタン表示
+            
             document.getElementById('next_btn').style.display = state.hand_over ? 'inline-block' : 'none';
         }
+        
         async function startGame() {
             const r = await fetch('/start', {method:'POST'});
             const data = await r.json();
@@ -125,8 +553,10 @@
             showHand(data.player_hand, 'player_hand', true);
             showHand([], 'cpu_hand', false);
             document.getElementById('result').textContent = '';
+            document.getElementById('result').className = '';
             renderState(data.state);
         }
+        
         async function doActionRaw(action){
             const r = await fetch('/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action })});
             const data = await r.json();
@@ -138,19 +568,23 @@
             showHand([], 'cpu_hand', false);
             renderState(data.state);
         }
+        
         function doCheckCall(){
             const acts = lastState?.legal_actions || [];
             if(acts.includes('check')) return doActionRaw('check');
             if(acts.includes('call')) return doActionRaw('call');
         }
+        
         function doBetRaise(){
             const acts = lastState?.legal_actions || [];
             if(acts.includes('bet')) return doActionRaw('bet');
             if(acts.includes('raise')) return doActionRaw('raise');
         }
+        
         async function doAction(action){
             return doActionRaw(action);
         }
+        
         async function draw() {
             if (!lastState?.draw_phase) return;
             let keep = [];
@@ -162,6 +596,7 @@
             showHand([], 'cpu_hand', false);
             renderState(data.state);
         }
+        
         async function standPat(){
             if (!lastState?.draw_phase) return;
             const keep = [0,1,2,3,4];
@@ -172,17 +607,25 @@
             showHand([], 'cpu_hand', false);
             renderState(data.state);
         }
+        
         async function showdown() {
             const r = await fetch('/showdown', {method:'POST'});
             const data = await r.json();
             showHand(data.player_hand, 'player_hand', true);
             showHand(data.cpu_hand, 'cpu_hand', true);
-            document.getElementById('result').textContent = (
-                data.result==='win' ? 'あなたの勝ち！' : (data.result==='lose' ? 'CPUの勝ち！' : '引き分け')
-            );
+            const resultElem = document.getElementById('result');
+            if(data.result === 'win') {
+                resultElem.textContent = 'あなたの勝ち！';
+                resultElem.className = 'win';
+            } else if(data.result === 'lose') {
+                resultElem.textContent = 'CPUの勝ち...';
+                resultElem.className = 'lose';
+            } else {
+                resultElem.textContent = '引き分け';
+                resultElem.className = 'draw';
+            }
             renderState(data.state);
         }
     </script>
 </body>
 </html>
-
