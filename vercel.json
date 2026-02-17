@@ -1,16 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    }
-  ],
+  "buildCommand": "cd mobile-app && npm install && npx expo export:web",
+  "outputDirectory": "mobile-app/web-build",
+  "framework": null,
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "/mobile-app/web-build/$1"
     }
   ]
 }
-
