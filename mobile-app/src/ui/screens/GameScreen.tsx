@@ -71,7 +71,7 @@ export const GameScreen: React.FC = () => {
     startNewGame();
   }, []);
 
-  // ゲーム状態の変更を監視してUIを更新
+  // ゲーム状態の変更を監視してUIを更新（CPUのターンを自動処理）
   useEffect(() => {
     if (!game) return;
     
@@ -79,15 +79,15 @@ export const GameScreen: React.FC = () => {
     
     // CPUのターンの場合、自動的に進行させる
     if (state.bettingOpen && !state.handOver && state.toAct !== null && state.toAct !== 0) {
-      // 少し遅延させてからCPUアクションを処理（UI更新のため）
       const timer = setTimeout(() => {
         try {
           game.cpuAutoProgress();
           setUpdateCounter(prev => prev + 1);
         } catch (error) {
           console.error('CPU auto progress error:', error);
+          setUpdateCounter(prev => prev + 1);
         }
-      }, 500);
+      }, 300);
       
       return () => clearTimeout(timer);
     }
