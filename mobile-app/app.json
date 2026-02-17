@@ -4,13 +4,7 @@
     "slug": "poker-27triple",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f4c3a"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -19,14 +13,8 @@
       "bundleIdentifier": "com.poker27triple.app"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f4c3a"
-      },
       "package": "com.poker27triple.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "web": {}
   }
 }
