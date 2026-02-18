@@ -258,11 +258,31 @@ export class Game {
     
     const targetContrib = Math.max(...activePlayers.map(p => p.contrib));
     const allMatched = activePlayers.every(p => p.contrib === targetContrib || p.isAllIn);
+    this.debugLog('H6', 'Game.ts:roundMaybeClose:check', 'round close check', {
+      toAct: this.toAct,
+      allMatched,
+      targetContrib,
+      activePlayers: activePlayers.map(p => ({
+        id: p.id,
+        contrib: p.contrib,
+        stack: p.stack,
+        isAllIn: p.isAllIn,
+        isFolded: p.isFolded,
+      })),
+      bettingOpen: this.bettingOpen,
+      drawPhase: this.drawPhase,
+      street: this.street,
+    });
     
     if (allMatched && this.toAct === null) {
       this.bettingOpen = false;
       this.drawPhase = this.street < 3;
       this.checkPending.clear();
+      this.debugLog('H6', 'Game.ts:roundMaybeClose:closed', 'round closed', {
+        bettingOpen: this.bettingOpen,
+        drawPhase: this.drawPhase,
+        street: this.street,
+      });
       return true;
     }
     return false;
@@ -385,6 +405,13 @@ export class Game {
    * CPUのアクションを処理
    */
   private processCPUActions(): void {
+    this.debugLog('H7', 'Game.ts:processCPUActions:entry', 'cpu processing start', {
+      toAct: this.toAct,
+      bettingOpen: this.bettingOpen,
+      handOver: this.handOver,
+      street: this.street,
+      drawPhase: this.drawPhase,
+    });
     while (this.bettingOpen && !this.handOver && this.toAct !== null && this.toAct !== 0) {
       const cpuId = this.toAct;
       const cpu = this.cpuAgents.get(cpuId);
@@ -409,6 +436,15 @@ export class Game {
         this.pot,
         callAmount
       );
+      this.debugLog('H7', 'Game.ts:processCPUActions:cpu-action', 'cpu chose action', {
+        cpuId,
+        action,
+        facingBet,
+        callAmount,
+        currentBet: this.currentBet,
+        contrib: player.contrib,
+        raisesThisRound: this.raisesThisRound,
+      });
 
       this.lastAction = { playerId: cpuId, action };
 
@@ -453,6 +489,13 @@ export class Game {
     if (!this.bettingOpen && this.street < 3 && !this.handOver) {
       this.drawPhase = true;
     }
+    this.debugLog('H7', 'Game.ts:processCPUActions:exit', 'cpu processing end', {
+      toAct: this.toAct,
+      bettingOpen: this.bettingOpen,
+      handOver: this.handOver,
+      street: this.street,
+      drawPhase: this.drawPhase,
+    });
   }
 
   /**
