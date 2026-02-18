@@ -118,7 +118,11 @@ export const GameScreen: React.FC = () => {
       setUpdateCounter(prev => prev + 1);
     } catch (error) {
       console.error('Draw error:', error);
-      Alert.alert('エラー', 'カード交換中にエラーが発生し�andPat = () => {
+      Alert.alert('エラー', 'カード交換中にエラーが発生しました');
+    }
+  };
+
+  const handleStandPat = () => {
     if (!game) return;
 
     try {
