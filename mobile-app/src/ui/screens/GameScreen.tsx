@@ -1,87 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Game } from '../../game/Game';
 import { Hand } from '../components/Hand';
 import { ActionButton } from '../components/ActionButton';
 import { Action, PlayerId } from '../../game/types';
 
+const ENDPOINT = 'http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7';
+
 const safeNumber = (value: number | undefined | null): number => {
-  if (value === undefined || value === null || Number.isNaN(value)) {
-    return 0;
-  }
+  if (value === undefined || value === null || Number.isNaN(value)) return 0;
   return value;
 };
 
 const getGamePhase = (street: number, drawPhase: boolean, bettingOpen: boolean, handOver: boolean): string => {
   if (handOver) return 'ゲーム終了';
-  if (street === 0 && bettingOpen) return 'プリドローベット';
-  if (drawPhase) {
-    if (street === 1) return '1st ドロー';
-    if (street === 2) return '2nd ドロー';
-    if (street === 3) return '3rd ドロー';
-    return 'ドロー';
-  }
-  if (bettingOpef (street === 2) return '2nd ベット';
-    if (street === 3) return '3rd ベット';
-    return 'ベッティング';
-  }
+  if (drawPhase) return `${street}回目ドロー`;
+  if (bettingOpen) return `${street}回目ベット`;
   if (street === 3) return 'ショーダウン待ち';
   return '進行中';
-};
-
-export const GameScreen: React.FC = () => {
-  const [game, setGame] = useState<Game | null>(null);
+};t [game, setGame] = useState<Game | null>(null);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
-  const [updateCounter, setUpdateCounter] = useState(0);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    const newGame = new Game(100);
-    setGame(newGame);
-    setSelectedCards([]);
-    setUpdateCounter(0);
-
+    const g = new Game(100);
+    setGame(g);
     // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H3',location:'GameScreen.tsx:init',message:'game initialized',data:{initialStack:100},timestamp:Date.now()})}).catch(()=>{});
+    fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H3',location:'GameScreen.tsx:init',message:'game initialized',data:{ok:true},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
   }, []);
 
+  const refresh = () => setVersion(v => v + 1);
+
   useEffect(() => {
     if (!game) return;
-
-    const state = game.getState();
-
-    // 7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H4',location:'GameScreen.tsx:cpu-effect',message:'cpu auto progress check',data:{toAct:state.toAct,bettingOpen:state.bettingOpen,handOver:state.handOver},timestamp:Date.now()})}).catch(()=>{});
+    const s = game.getState();
+    // #region agent log
+    fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H4',location:'GameScreen.tsx:cpu-progress',message:'cpu progress check',data:{toAct:s.toAct,bettingOpen:s.bettingOpen,handOver:s.handOver},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
-
-    if (state.bettingOpen && !state.handOver && state.toAct !== null && state.toAct !== 0) {
+    if (s.bettingOpen && !s.handOver && s.toAct !== null && s.toAct !== 0) {
       game.cpuAutoProgress();
-      setUpdateCounter(prev => prev + 1);
+      refresh();
     }
-  }, [game, updateCounter]);
+  }, [game, version]);
 
   const startNewGame = () => {
-    const newGame = new Game(100);
-    setGame(newGame);
+    const g = new Game(100);
+    setGame(g);
     setSelectedCards([]);
-    setUpdateCounter(prev => prev + 1);
+    refresh();
   };
 
+  if (!game) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>ゲームを開始しています...</Text>
+      </View>
+    );
+  }
+
+  const state = game.getState();
+  const myTurn = state.bettingOpen && state.toAct === 0;
+  const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
+  const betSize = state.street <= 1 ? 2 : 4;
+  const winnerDisplay: PlayerId[] | null = state.handOver && state.lastPayout ? state.lastPayout.winners : null;
+
+  const hintText = useMemo(() => {
+    if (state.handOver) return 'ハンド終了: 新しいゲームを開始してください';
+    if (state.drawPhase) return '交換するカードを選択して「カード交換」';
+    if (myTurn) retuです' : `CPU${state.toAct} のアクション待ち`;
+  }, [state.handOver, state.drawPhase, myTurn, state.toAct]);
+
+  // #region agent log
+  fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H5',location:'GameScreen.tsx:render',message:'render snapshot',data:{myTurn,drawPhase:state.drawPhase,legalActions:state.legalActions},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   const handleAction = (action: Action) => {
-    if (!game) return;
-
+    if (!myTurn) {
+      Alert.alert('エラー', 'あなたのターンではありません');
+      return;
+    }
     try {
-      const state = game.getState();
-      if (!state.bettingOpen) {
-        Alert.alert('エラー', '今はベッティングできません');
-        return;
-      }
-      if (state.toAct !== 0) {
-        Alert.alert('エラー', 'あなたのターンではありません');
-        return;
-      }
-
       game.playerAction(action);
-      setUpdateCounter(prev => prev + 1);
+      refresh();
     } catch (error) {
       console.error('Action error:', error);
       Alert.alert('エラー', 'アクション実行中にエラーが発生しました');
@@ -89,31 +90,21 @@ export const GameScreen: React.FC = () => {
   };
 
   const handleCardPress = (index: number) => {
-    if (!game) return;
-
-    const state = game.getState();
     if (!state.drawPhase) return;
-
     if (selectedCards.includes(index)) {
-   < 5) {
-      setSelectedCards(prev => [...prev, index]);
+      setSelectedCards(prev => prev.fdCards(prev => [...prev, index]);
     }
   };
 
   const handleDraw = () => {
-    if (!game) return;
-
+    if (!state.drawPhase || state.handOver) return;
     try {
-      const state = game.getState();
-      if (!state.drawPhase || state.handOver) return;
-
       const keepIndexes = [0, 1, 2, 3, 4].filter(i => !selectedCards.includes(i));
       game.playerDiscard(keepIndexes);
       game.cpuDiscard();
       game.afterAllDiscardAdvance();
-
       setSelectedCards([]);
-      setUpdateCounter(prev => prev + 1);
+      refresh();
     } catch (error) {
       console.error('Draw error:', error);
       Alert.alert('エラー', 'カード交換中にエラーが発生しました');
@@ -121,18 +112,13 @@ export const GameScreen: React.FC = () => {
   };
 
   const handleStandPat = () => {
-    if (!game) return;
-
+    if (!state.drawPhase || state.handOver) return;
     try {
-      const state = game.getState();
-      if (rn;
-
       game.playerDiscard([0, 1, 2, 3, 4]);
       game.cpuDiscard();
       game.afterAllDiscardAdvance();
-
       setSelectedCards([]);
-      setUpdateCounter(prev => prev + 1);
+      refresh();
     } catch (error) {
       console.error('Stand pat error:', error);
       Alert.alert('エラー', 'スタンドパット中にエラーが発生しました');
@@ -140,13 +126,7 @@ export const GameScreen: React.FC = () => {
   };
 
   const handleShowdown = () => {
-    if (!game) return;
-
-    try {
-      const state = game.getState();
-      if (state.street !== 3 || state.bettingOpen || state.drawPhase || state.handOver) return;
-
-      const result = game.showdown();
+    if (state.street !== 3 || state.bettiname.showdown();
       const isWinner = result.winners.includes(0);
       if (isWinner) {
         const payout = result.payouts.find(p => p.playerId === 0);
@@ -154,123 +134,54 @@ export const GameScreen: React.FC = () => {
       } else {
         Alert.alert('ショーダウン', 'あなたの負け...');
       }
-      setUpdateCounter(prev => prev + 1);
+      refresh();
     } catch (error) {
-      console.error('Showdon (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>ゲームを開始しています...</Text>
-      </View>
-    );
-  }
-
-  let state;
-  try {
-    state = game.getState();
-  } catch (error) {
-    console.error('Get state error:', error);
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>エラーが発生しました。新しいゲームを開始してください。</Text>
-        <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
-          <Text style={styles.newGameText}>新しいゲーム</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const myTurn = state.bettingOpen && state.toAct === 0;
-  const gamePhase = getGamePhase(state.street, state.drawPhase, state.bettingOpen, state.handOver);
-  const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
-  const betSize = state.street <= 1 ? 2 : 4;
-
-  const winnerDisplay: PlayerId[] | null = state.handOver && state.lastPayout ? state.last= 0 ? 'あなた' : `CPU${state.toAct}`;
-  const hintText = state.handOver
-    ? 'ハンド終了: 「新しいゲーム」で次へ'
-    : state.drawPhase
-      ? '交換するカードを選択して「カード交換」'
-      : myTurn
-        ? 'あなたのターンです'
-        : `${actingLabel} のアクション待ち`;
-
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H5',location:'GameScreen.tsx:render',message:'render state snapshot',data:{myTurn,drawPhase:state.drawPhase,legalActions:state.legalActions,toAct:state.toAct},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+      console.error('Showdown error:', error);
+      Alert.alert('エラー', 'ショーダウン中にエラーが発生しました');
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>2-7 Triple Draw Poker</Text>
         <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
-          <Text style={styles.ntyle={styles.winnerBanner}>
-          <Text style={styles.winnerBannerText}>
-            {winnerDisplay.includes(0)
-              ? `あなたの勝ち！ +${state.lastPayout?.amounts[winnerDisplay.indexOf(0)] || 0}`
-              : 'あなたの負け'}
-          </Text>
-        </View>
-      )}
+          <Text style={styles.newGameText}>新しいゲーム</Text>
+        </TouchableOpacity>
+      </View>
 
-      <View style={styles.statusRow}>
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>ポット</Text>
-          <Text style={styles.statusValue}>{safeNumber(state.pot)}</Text>
-        </View>
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>フェーズ</Text>
-          <Text style={styles.statusSub}>{gamePhase}</Text>
-        </View>
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>アクター</Text>
-          <Text style={styles.statusSub}>{actingLabel}</Text>
-        </View>
+      {winnerDisplay && (
+        <View style={styles.winnerBanner}>
+          <Text style={styles.winnerBannerText}>{winnerDisplay.includes(0) ?styles.statusText}>ポット: {safeNumber(state.pot)}</Text>
+        <Text style={styles.statusText}>フェーズ: {getGamePhase(state.street, state.drawPhase, state.bettingOpen, state.handOver)}</Text>
       </View>
 
       {state.bettingOpen && !state.handOver && (
-        <View style={styles.betInfoBar}>
-          <Text style={styles.te.currentBet)} / {callAmount > 0 ? `コール: ${callAmount}` : 'チェック可能'} / サイズ: {betSize}
-          </Text>
-        </View>
+        <Text style={styles.betText}>現在ベット: {safeNumber(state.currentBet)} / {callAmount > 0 ? `コール: ${callAmount}` : 'チェック可能'} / サイズ: {betSize}</Text>
       )}
 
-      <Text style={[styles.hintText, myTurn && styles.hintActive]}>{hintText}</Text>
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <Text style={[styles.hintText, myTurn && styles.hintActive]}>{hintTexte={styles.scrollContent}>
         <View style={styles.cpuGrid}>
           {state.players.slice(1).map((player, idx) => {
             const cpuId = (idx + 1) as PlayerId;
             const isActive = state.toAct === cpuId;
             const lastAction = state.lastAction?.playerId === cpuId ? state.lastAction.action : null;
             const revealed = !!(state.handOver || winnerDisplay?.includes(cpuId));
-
             return (
               <View key={player.id} style={[styles.cpuCard, isActive && styles.activeCpuCard]}>
                 <Text style={styles.cpuName}>{player.name}</Text>
-                <Text style={styles.cpuStack}>スタック: {safeNumber(player.stayer.isFolded ? (
-                  <Text style={styles.foldedText}>フォールド</Text>
-                ) : (
-                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 🂠'}</Text>
-                )}
-                {lastAction && (
-                  <Text style={styles.actionBadge}>
-                    {lastAction === 'fold'
-                      ? 'フォールド'
-                      : lastAction === 'check'
-                        ? 'チェック'
-                        : lastAction === 'call'
-                          ? 'コール'
-                          : lastAction === 'bet'
-                            ? 'ベット'
-                            : 'レイズ'}
-                  </Text>
-                )}
+                <Text style={styles.cpuStack}>スタック: {safeNumber(player.stack)}</Text>
+                <le={styles.hiddenCards}>{player.isFolded ? 'フォールド' : revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 🂠'}</Text>
+                {lastAction && <Text style={styles.actionBadge}>{lastAction}</Text>}
               </View>
             );
           })}
         </View>
 
         <View style={styles.playerArea}>
-          <Text style={styles.playerName}>あなた</Text>
-          <Text style={styles.stackText}>スタック: {safeNumber(state.playerstedCards} onCardPress={handleCardPress} />
+  ayerName}>あなた</Text>
+          <Text style={styles.stackText}>スタック: {safeNumber(state.players[0].stack)}</Text>
+          <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={handleCardPress} />
           {state.drawPhase && <Text style={styles.drawHint}>{selectedCards.length}枚選択中</Text>}
         </View>
       </ScrollView>
@@ -283,10 +194,7 @@ export const GameScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.controls}>
-            {state.legalActions.includes('fold') && (
-              <ActionButton action="fold" label="フォールド" onPress={() => handleAction('fold')} variant="dang>
-            )}
-            {(state.legalActions.includes('check') || state.legalActions.includes('call')) && (
+            {state.legalActions.includes('fold') && <ActionButton action="fold" label="フォールド" onPress={() => handleAction('fold')} variant="danger" disabled={!myTurn || state.handOver}|| state.legalActions.includes('call')) && (
               <ActionButton
                 action={state.legalActions.includes('check') ? 'check' : 'call'}
                 label={state.legalActions.includes('check') ? 'チェック' : `コール(${callAmount})`}
@@ -301,11 +209,10 @@ export const GameScreen: React.FC = () => {
                 label={state.legalActions.includes('bet') ? `ベット(${betSize})` : `レイズ(${betSize})`}
                 onPress={() => handleAction(state.legalActions.includes('bet') ? 'bet' : 'raise')}
                 variant="warning"
-                disabled={!              />
+                disabled={!myTurn || state.handOver}
+              />
             )}
-            {state.street === 3 && !state.bettingOpen && !state.drawPhase && !state.handOver && (
-              <ActionButton action="bet" label="ショーダウン" onPress={handleShowdown} variant="primary" />
-            )}
+          state.bettingOpen && !state.drawPhase && !state.handOver && <ActionButton action="bet" label="ショーダウン" onPress={handleShowdown} variant="primary" />}
           </View>
         )}
       </View>
@@ -314,10 +221,7 @@ export const GameScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f4c3a',
-  },
+  container: { flex: 1, backgroundColor: '#0f4c3a' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -327,79 +231,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd700',
-  },
-  newGameButton: {
-    backgroundColor: '#ffd700',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-  },
-  newGameText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  winnerBanner: {
-    backgroundColor: 'rgba(56, 239, 125, 0.8)',
-    padding: 10,
-    aligter',
-  },
-  winnerBannerText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-  },
-  statusBox: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.45)',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-  statusLabel: {
-    color: '#d5d5d5',
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  statusValue: {
-    color: '#ffd700',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  statusSub: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  betInfoBar: {
-    marginTop: 8,
-    marginHorizontal: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,215,0,0.18)',
-  },
-  betInfoText: {
-    fontSize: 13,
-    color: '#ffd700',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#ffd700' },
+  newGameButton: { backgroundColor: '#ffd700', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16 },
+  newGameText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
+  winnerBanner: { backgroundColor: 'rgba(56, 239, 125, 0.8)', padding: 10, alignItems: 'center' },
+  winnerBannerText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  statusRow: { paddingHorizontal: 10, paddingTop: 10, gap: 4 },
+  statusText:fff', fontSize: 13 },
+  betText: { marginHorizontal: 10, marginTop: 8, color: '#ffd700', fontSize: 13 },
   hintText: {
     marginTop: 8,
     marginHorizontal: 10,
@@ -410,21 +249,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(70,126,158,0.35)',
     fontSize: 13,
   },
-  hintActive: {
-    color: '#0f4c3a',
-    backgroundColor: '#4ecdc4',
-    fontWeight: '700',
-  },
-  scrollContent: {
-    padding: 10,
-    paddingBottom: 16,
-  },
-  cpuGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'space-between',
-  },
+  hintActive: { color: '#0f4c3a', backgroundColor: '#4ecdc4', fontWeight: '700' },
+  scrollContent: { padding: 10, paddingBottom: 16 },
+  cpuGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
   cpuCard: {
     width: '49%',
     minHeight: 102,
@@ -434,33 +261,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  activeCpuCard: {
-    borderWidth: 2,
-    borderColor: '#4ecdc4',
-    backgroundColor: 'rgba(78,205,196,0.2)',
-  },
-  cpuName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  cpuStack: {
-    color: '#ccc',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  foldedText: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#ff6b6b',
-    fontWeight: 'bold',
-  },
-  hiddenCards: {
-    marginTop: 6,
-    color: '#b7d9ce',
-    fontSize: 14,
-    letterSpacing: 1,
-  },
+  activeCpuCard: { borderWidth: 2, borderColor: '#4ecdc4', backgroundColor: 'rgba(78,205,196,0.2)' },
+  cpuName: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  cpuStack: { color: '#ccc', fontSize: 12, marginTop: 2 },
+  hiddenCards: { marginTop: 6, color: '#b7d9ce', fontSize: 14, letterSpacing: 1 },
   actionBadge: {
     marginTop: 6,
     alignSelf: 'flex-start',
@@ -481,24 +285,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffd700',
   },
-  playerName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffd700',
-  },
-  stackText: {
-    marginTop: 4,
-    marginBottom: 8,
-    fontSize: 15,
-    color: '#fff',
-  },
-  drawHint: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#4ecdc4',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+  playerName: { fontSize: 18, fontWeight: 'bold', color: '#ffd700' },
+  stackText: { marginTop: 4, marginBottom: 8, fontSize: 15, color: '#fff' },
+  drawHint: { marginTop: 6, fontSize: 13, color: '#4ecdc4', textAlign: 'center', fontWeight: '600' },
   controlsContainer: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.15)',
@@ -507,24 +296,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  controls: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 50,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 50,
-    marginBottom: 20,
-    padding: 20,
-  },
+  controls: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+  loadingText: { color: '#fff', fontSize: 18, textAlign: 'center', marginTop: 50 },
 });
