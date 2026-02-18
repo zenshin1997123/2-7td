@@ -34,6 +34,7 @@ export class Game {
   public drawPhase: boolean = false;
   public handOver: boolean = false;
   public checkPending: Set<PlayerId> = new Set();
+  private actedThisRound: Set<PlayerId> = new Set();
 
   // その他
   public lastAction: { playerId: PlayerId; action: Action } | null = null;
@@ -161,6 +162,7 @@ export class Game {
     this.currentBet = 0;
     this.raisesThisRound = 0;
     this.checkPending.clear();
+    this.actedThisRound.clear();
     for (const player of this.players) {
       player.contrib = 0;
     }
@@ -246,6 +248,9 @@ export class Game {
       const need = Math.min(this.currentBet - player.contrib, player.stack);
       this.applyBet(playerId, need);
     }
+    // ベット/レイズ後は、そのアクター以外は再アクションが必要
+    this.actedThisRound.clear();
+    this.actedThisRound.add(playerId);
   }
 
   /**
@@ -258,9 +263,11 @@ export class Game {
     
     const targetContrib = Math.max(...activePlayers.map(p => p.contrib));
     const allMatched = activePlayers.every(p => p.contrib === targetContrib || p.isAllIn);
+    const allActed = activePlayers.every(p => this.actedThisRound.has(p.id));
     this.debugLog('H6', 'Game.ts:roundMaybeClose:check', 'round close check', {
       toAct: this.toAct,
       allMatched,
+      allActed,
       targetContrib,
       activePlayers: activePlayers.map(p => ({
         id: p.id,
@@ -274,10 +281,7 @@ export class Game {
       street: this.street,
     });
     
-    // ラウンド終了条件:
-    // - 従来の toAct === null
-    // - CPU自動進行後にアクション順がプレイヤー(0)へ戻り、全員のcontribが一致している
-    if (allMatched && (this.toAct === null || this.toAct === 0)) {
+    if (allMatched && allActed) {
       this.bettingOpen = false;
       this.drawPhase = this.street < 3;
       this.checkPending.clear();
@@ -349,6 +353,7 @@ export class Game {
 
     if (action === 'fold') {
       player.isFolded = true;
+      this.actedThisRound.add(0);
       this.advanceToNextActor();
       
       // 1人だけ残ったら勝ち
@@ -360,6 +365,7 @@ export class Game {
       // フェイスしている
       if (action === 'call') {
         this.callToCurrent(0);
+        this.actedThisRound.add(0);
         this.advanceToNextActor();
       } else if (action === 'raise' && this.raisesThisRound < this.maxRaises) {
         this.betOrRaise(0);
@@ -377,6 +383,7 @@ export class Game {
       // ベットなし
       if (action === 'check') {
         this.checkPending.add(0);
+        this.actedThisRound.add(0);
         this.advanceToNextActor();
       } else if (action === 'bet') {
         this.betOrRaise(0);
@@ -389,6 +396,10 @@ export class Game {
         });
         return;
       }
+    }
+
+    if (this.roundMaybeClose()) {
+      return;
     }
 
     // CPUの自動進行
@@ -455,6 +466,7 @@ export class Game {
 
       if (action === 'fold') {
         player.isFolded = true;
+        this.actedThisRound.add(cpuId);
         this.advanceToNextActor();
         
         // 1人だけ残ったら勝ち
@@ -465,6 +477,7 @@ export class Game {
       } else if (this.currentBet > player.contrib) {
         if (action === 'call') {
           this.callToCurrent(cpuId);
+          this.actedThisRound.add(cpuId);
           this.advanceToNextActor();
         } else if (action === 'raise' && this.raisesThisRound < this.maxRaises) {
           this.betOrRaise(cpuId);
@@ -472,6 +485,7 @@ export class Game {
         } else {
           // フォールバック: コール
           this.callToCurrent(cpuId);
+          this.actedThisRound.add(cpuId);
           this.advanceToNextActor();
         }
       } else {
@@ -481,6 +495,7 @@ export class Game {
         } else {
           // check処理
           this.checkPending.add(cpuId);
+          this.actedThisRound.add(cpuId);
           this.advanceToNextActor();
         }
       }
