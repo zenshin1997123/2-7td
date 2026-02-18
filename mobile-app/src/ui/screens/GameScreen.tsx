@@ -21,9 +21,7 @@ const getGamePhase = (street: number, drawPhase: boolean, bettingOpen: boolean, 
     if (street === 3) return '3rd ドロー';
     return 'ドロー';
   }
-  if (bettingOpen) {
-    if (street === 1) return '1st ベット';
-    if (street === 2) return '2nd ベット';
+  if (bettingOpef (street === 2) return '2nd ベット';
     if (street === 3) return '3rd ベット';
     return 'ベッティング';
   }
@@ -41,24 +39,23 @@ export const GameScreen: React.FC = () => {
     setGame(newGame);
     setSelectedCards([]);
     setUpdateCounter(0);
+
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H3',location:'GameScreen.tsx:init',message:'game initialized',data:{initialStack:100},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   }, []);
 
   useEffect(() => {
     if (!game) return;
 
     const state = game.getState();
-    if (state.bettingOpen && !state.handOver && state.toAct !== null && state.toAct !== 0) {
-      const timer = setTimeout(() => {
-        try {
-          game.cpuAutoProgress();
-        } catch (error) {
-          console.error('CPU auto progress error:', error);
-        } finally {
-          setUpdateCounter(prev => prev + 1);
-        }
-      }, 180);
 
-      return () => clearTimeout(timer);
+    // 7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H4',location:'GameScreen.tsx:cpu-effect',message:'cpu auto progress check',data:{toAct:state.toAct,bettingOpen:state.bettingOpen,handOver:state.handOver},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
+    if (state.bettingOpen && !state.handOver && state.toAct !== null && state.toAct !== 0) {
+      game.cpuAutoProgress();
+      setUpdateCounter(prev => prev + 1);
     }
   }, [game, updateCounter]);
 
@@ -98,7 +95,8 @@ export const GameScreen: React.FC = () => {
     if (!state.drawPhase) return;
 
     if (selectedCards.includes(index)) {
-      setSelectedCards(prev => prerev => [...prev, index]);
+   < 5) {
+      setSelectedCards(prev => [...prev, index]);
     }
   };
 
@@ -127,7 +125,7 @@ export const GameScreen: React.FC = () => {
 
     try {
       const state = game.getState();
-      if (!state.drawPhase || state.handOver) return;
+      if (rn;
 
       game.playerDiscard([0, 1, 2, 3, 4]);
       game.cpuDiscard();
@@ -148,7 +146,8 @@ export const GameScreen: React.FC = () => {
       const state = game.getState();
       if (state.street !== 3 || state.bettingOpen || state.drawPhase || state.handOver) return;
 
-      const res= result.winners.includes(0);
+      const result = game.showdown();
+      const isWinner = result.winners.includes(0);
       if (isWinner) {
         const payout = result.payouts.find(p => p.playerId === 0);
         Alert.alert('ショーダウン', `あなたの勝ち！${payout?.amount || 0}チップ獲得`);
@@ -157,13 +156,7 @@ export const GameScreen: React.FC = () => {
       }
       setUpdateCounter(prev => prev + 1);
     } catch (error) {
-      console.error('Showdown error:', error);
-      Alert.alert('エラー', 'ショーダウン中にエラーが発生しました');
-    }
-  };
-
-  if (!game) {
-    return (
+      console.error('Showdon (
       <View style={styles.container}>
         <Text style={styles.loadingText}>ゲームを開始しています...</Text>
       </View>
@@ -190,8 +183,7 @@ export const GameScreen: React.FC = () => {
   const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
   const betSize = state.street <= 1 ? 2 : 4;
 
-  const winnerDisplay: PlayerId[] | null = state.handOver && state.lastPayout ? state.lastPayout.winners : null;
-  const actingLabel = state.toAct === null ? '-' : state.toAct === 0 ? 'あなた' : `CPU${state.toAct}`;
+  const winnerDisplay: PlayerId[] | null = state.handOver && state.lastPayout ? state.last= 0 ? 'あなた' : `CPU${state.toAct}`;
   const hintText = state.handOver
     ? 'ハンド終了: 「新しいゲーム」で次へ'
     : state.drawPhase
@@ -200,12 +192,16 @@ export const GameScreen: React.FC = () => {
         ? 'あなたのターンです'
         : `${actingLabel} のアクション待ち`;
 
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'run-compile-fix',hypothesisId:'H5',location:'GameScreen.tsx:render',message:'render state snapshot',data:{myTurn,drawPhase:state.drawPhase,legalActions:state.legalActions,toAct:state.toAct},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>2-7 Triple Draw Poker</Text>
-        <TouchableOpacity style={styles.newGameButton} onPress={startNewGa {winnerDisplay && (
-        <View style={styles.winnerBanner}>
+        <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
+          <Text style={styles.ntyle={styles.winnerBanner}>
           <Text style={styles.winnerBannerText}>
             {winnerDisplay.includes(0)
               ? `あなたの勝ち！ +${state.lastPayout?.amounts[winnerDisplay.indexOf(0)] || 0}`
@@ -229,8 +225,9 @@ export const GameScreen: React.FC = () => {
         </View>
       </View>
 
-      {state.bettingOpen && !state.handOver &&      <Text style={styles.betInfoText}>
-            現在ベット: {safeNumber(state.currentBet)} / {callAmount > 0 ? `コール: ${callAmount}` : 'チェック可能'} / サイズ: {betSize}
+      {state.bettingOpen && !state.handOver && (
+        <View style={styles.betInfoBar}>
+          <Text style={styles.te.currentBet)} / {callAmount > 0 ? `コール: ${callAmount}` : 'チェック可能'} / サイズ: {betSize}
           </Text>
         </View>
       )}
@@ -242,17 +239,18 @@ export const GameScreen: React.FC = () => {
           {state.players.slice(1).map((player, idx) => {
             const cpuId = (idx + 1) as PlayerId;
             const isActive = state.toAct === cpuId;
-         tion?.playerId === cpuId ? state.lastAction.action : null;
+            const lastAction = state.lastAction?.playerId === cpuId ? state.lastAction.action : null;
             const revealed = !!(state.handOver || winnerDisplay?.includes(cpuId));
 
             return (
               <View key={player.id} style={[styles.cpuCard, isActive && styles.activeCpuCard]}>
                 <Text style={styles.cpuName}>{player.name}</Text>
-                <Text style={styles.cpuStack}>スタック: {safeNumber(player.stack)}</Text>
-                {player.isFolded ? (
+                <Text style={styles.cpuStack}>スタック: {safeNumber(player.stayer.isFolded ? (
                   <Text style={styles.foldedText}>フォールド</Text>
                 ) : (
-                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 �          {lastAction && (
+                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 🂠'}</Text>
+                )}
+                {lastAction && (
                   <Text style={styles.actionBadge}>
                     {lastAction === 'fold'
                       ? 'フォールド'
@@ -271,8 +269,8 @@ export const GameScreen: React.FC = () => {
         </View>
 
         <View style={styles.playerArea}>
-          <Text style={    <Text style={styles.stackText}>スタック: {safeNumber(state.players[0].stack)}</Text>
-          <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={handleCardPress} />
+          <Text style={styles.playerName}>あなた</Text>
+          <Text style={styles.stackText}>スタック: {safeNumber(state.playerstedCards} onCardPress={handleCardPress} />
           {state.drawPhase && <Text style={styles.drawHint}>{selectedCards.length}枚選択中</Text>}
         </View>
       </ScrollView>
@@ -281,12 +279,12 @@ export const GameScreen: React.FC = () => {
         {state.drawPhase ? (
           <View style={styles.controls}>
             <ActionButton action="bet" label="カード交換" onPress={handleDraw} variant="info" disabled={state.handOver} />
-            <ActionButton action="bet" lableStandPat} variant="success" disabled={state.handOver} />
+            <ActionButton action="bet" label="スタンドパット" onPress={handleStandPat} variant="success" disabled={state.handOver} />
           </View>
         ) : (
           <View style={styles.controls}>
             {state.legalActions.includes('fold') && (
-              <ActionButton action="fold" label="フォールド" onPress={() => handleAction('fold')} variant="danger" disabled={!myTurn || state.handOver} />
+              <ActionButton action="fold" label="フォールド" onPress={() => handleAction('fold')} variant="dang>
             )}
             {(state.legalActions.includes('check') || state.legalActions.includes('call')) && (
               <ActionButton
@@ -299,12 +297,11 @@ export const GameScreen: React.FC = () => {
             )}
             {(state.legalActions.includes('bet') || state.legalActions.includes('raise')) && (
               <ActionButton
-     .legalActions.includes('bet') ? 'bet' : 'raise'}
+                action={state.legalActions.includes('bet') ? 'bet' : 'raise'}
                 label={state.legalActions.includes('bet') ? `ベット(${betSize})` : `レイズ(${betSize})`}
                 onPress={() => handleAction(state.legalActions.includes('bet') ? 'bet' : 'raise')}
                 variant="warning"
-                disabled={!myTurn || state.handOver}
-              />
+                disabled={!              />
             )}
             {state.street === 3 && !state.bettingOpen && !state.drawPhase && !state.handOver && (
               <ActionButton action="bet" label="ショーダウン" onPress={handleShowdown} variant="primary" />
@@ -332,7 +329,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontr: '#ffd700',
+    fontWeight: 'bold',
+    color: '#ffd700',
   },
   newGameButton: {
     backgroundColor: '#ffd700',
@@ -348,7 +346,7 @@ const styles = StyleSheet.create({
   winnerBanner: {
     backgroundColor: 'rgba(56, 239, 125, 0.8)',
     padding: 10,
-    alignItems: 'center',
+    aligter',
   },
   winnerBannerText: {
     fontSize: 16,
