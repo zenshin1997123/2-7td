@@ -58,6 +58,18 @@ export const GameScreen: React.FC = () => {
     }
   }, [game, tick]);
 
+  useEffect(() => {
+    if (!game) return;
+    const s = game.getState();
+    if (s.street === 3 && !s.drawPhase && !s.bettingOpen && !s.handOver) {
+      // #region agent log
+      fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: 'run-showdown-ui', hypothesisId: 'H8', location: 'GameScreen.tsx:auto-showdown', message: 'auto showdown triggered', data: { street: s.street, drawPhase: s.drawPhase, bettingOpen: s.bettingOpen, handOver: s.handOver }, timestamp: Date.now() }) }).catch(() => {});
+      // #endregion
+      game.showdown();
+      refresh();
+    }
+  }, [game, tick]);
+
   const startNewGame = () => {
     const g = new Game(100);
     setGame(g);
@@ -77,9 +89,15 @@ export const GameScreen: React.FC = () => {
   const myTurn = state.bettingOpen && state.toAct === 0;
   const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
   const betSize = state.street <= 1 ? 2 : 4;
+  const winnerNames = state.lastPayout
+    ? state.lastPayout.winners.map(id => (id === 0 ? 'あなた' : `CPU${id}`)).join(', ')
+    : '';
 
   // #region agent log
   fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: 'run-compile-fix', hypothesisId: 'H3', location: 'GameScreen.tsx:render', message: 'render snapshot', data: { myTurn, drawPhase: state.drawPhase, legalActions: state.legalActions, toAct: state.toAct }, timestamp: Date.now() }) }).catch(() => {});
+  // #endregion
+  // #region agent log
+  fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: 'run-showdown-ui', hypothesisId: 'H9', location: 'GameScreen.tsx:winner-banner', message: 'winner ui state', data: { handOver: state.handOver, hasLastPayout: !!state.lastPayout, winnerNames }, timestamp: Date.now() }) }).catch(() => {});
   // #endregion
 
   const onAction = (action: Action) => {
@@ -168,6 +186,12 @@ export const GameScreen: React.FC = () => {
 
       <Text style={styles.infoText}>ポット: {safeNumber(state.pot)} / フェーズ: {phaseText(state.street, state.drawPhase, state.bettingOpen, state.handOver)}</Text>
       <Text style={styles.infoText}>現在アクター: {state.toAct === null ? '-' : state.toAct === 0 ? 'あなた' : `CPU${state.toAct}`}</Text>
+      {state.handOver && state.lastPayout && (
+        <View style={styles.winnerBanner}>
+          <Text style={styles.winnerText}>勝者: {winnerNames}</Text>
+          <Text style={styles.winnerText}>配当: {state.lastPayout.amounts.join(', ')}</Text>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {state.players.slice(1).map((player, idx) => {
@@ -176,7 +200,11 @@ export const GameScreen: React.FC = () => {
           return (
             <View key={player.id} style={[styles.cpuRow, isActive && styles.activeRow]}>
               <Text style={styles.cpuText}>{player.name} ({positionLabel(cpuId, state.dealerPosition)}) / スタック: {safeNumber(player.stack)}</Text>
-              <Text style={styles.cpuText}>{player.isFolded ? 'フォールド' : '🂠 🂠 🂠 🂠 🂠'}</Text>
+              {state.handOver && !player.isFolded && player.hand.length > 0 ? (
+                <Hand cards={player.hand} />
+              ) : (
+                <Text style={styles.cpuText}>{player.isFolded ? 'フォールド' : '🂠 🂠 🂠 🂠 🂠'}</Text>
+              )}
             </View>
           );
         })}
@@ -241,6 +269,17 @@ const styles = StyleSheet.create({
   newGameText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
   loadingText: { color: '#fff', fontSize: 18, textAlign: 'center', marginTop: 50 },
   infoText: { color: '#fff', fontSize: 13, marginHorizontal: 10, marginTop: 6 },
+  winnerBanner: {
+    marginHorizontal: 10,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffd700',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+  },
+  winnerText: { color: '#ffd700', fontSize: 13, fontWeight: 'bold' },
   scrollContent: { padding: 10, paddingBottom: 16 },
   cpuRow: { backgroundColor: 'rgba(0,0,0,0.25)', padding: 8, borderRadius: 8, marginBottom: 8 },
   activeRow: { borderWidth: 2, borderColor: '#4ecdc4' },
