@@ -20,6 +20,16 @@ const phaseText = (street: number, drawPhase: boolean, bettingOpen: boolean, han
   return '進行中';
 };
 
+const positionLabel = (playerId: PlayerId, dealerPosition: number): string => {
+  const rel = (playerId - dealerPosition + 6) % 6;
+  if (rel === 0) return 'BTN';
+  if (rel === 1) return 'SB';
+  if (rel === 2) return 'BB';
+  if (rel === 3) return 'UTG';
+  if (rel === 4) return 'HJ';
+  return 'CO';
+};
+
 export const GameScreen: React.FC = () => {
   const [game, setGame] = useState<Game | null>(null);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
@@ -165,14 +175,14 @@ export const GameScreen: React.FC = () => {
           const isActive = state.toAct === cpuId;
           return (
             <View key={player.id} style={[styles.cpuRow, isActive && styles.activeRow]}>
-              <Text style={styles.cpuText}>{player.name} / スタック: {safeNumber(player.stack)}</Text>
+              <Text style={styles.cpuText}>{player.name} ({positionLabel(cpuId, state.dealerPosition)}) / スタック: {safeNumber(player.stack)}</Text>
               <Text style={styles.cpuText}>{player.isFolded ? 'フォールド' : '🂠 🂠 🂠 🂠 🂠'}</Text>
             </View>
           );
         })}
 
         <View style={styles.playerArea}>
-          <Text style={styles.playerText}>あなた / スタック: {safeNumber(state.players[0].stack)}</Text>
+          <Text style={styles.playerText}>あなた ({positionLabel(0, state.dealerPosition)}) / スタック: {safeNumber(state.players[0].stack)}</Text>
           <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={onCardPress} />
           {state.drawPhase && <Text style={styles.infoText}>選択中: {selectedCards.length}枚</Text>}
         </View>

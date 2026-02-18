@@ -274,14 +274,19 @@ export class Game {
       street: this.street,
     });
     
-    if (allMatched && this.toAct === null) {
+    // ラウンド終了条件:
+    // - 従来の toAct === null
+    // - CPU自動進行後にアクション順がプレイヤー(0)へ戻り、全員のcontribが一致している
+    if (allMatched && (this.toAct === null || this.toAct === 0)) {
       this.bettingOpen = false;
       this.drawPhase = this.street < 3;
       this.checkPending.clear();
+      this.toAct = null;
       this.debugLog('H6', 'Game.ts:roundMaybeClose:closed', 'round closed', {
         bettingOpen: this.bettingOpen,
         drawPhase: this.drawPhase,
         street: this.street,
+        toAct: this.toAct,
       });
       return true;
     }
