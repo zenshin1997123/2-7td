@@ -58,7 +58,9 @@ export const GameScreen: React.FC = () => {
         }
       }, 180);
 
-      return () teCounter]);
+      return () => clearTimeout(timer);
+    }
+  }, [game, updateCounter]);
 
   const startNewGame = () => {
     const newGame = new Game(100);
