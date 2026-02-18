@@ -21,7 +21,9 @@ const getGamePhase = (street: number, drawPhase: boolean, bettingOpen: boolean, 
     if (street === 3) return '3rd ドロー';
     return 'ドロー';
   }
-  if (bettingOpef (street === 2) return '2nd ベット';
+  if (bettingOpen) {
+    if (street === 1) return '1st ベット';
+    if (street === 2) return '2nd ベット';
     if (street === 3) return '3rd ベット';
     return 'ベッティング';
   }
@@ -114,7 +116,7 @@ export const GameScreen: React.FC = () => {
       setUpdateCounter(prev => prev + 1);
     } catch (error) {
       console.error('Draw error:', error);
-      Alert.alert('エラー', 'カード交換中にエラーが発生し�andPat = () => {
+      Alert.alert('エラー', 'カード交換中にエラーが発生し�andPat = () => {
     if (!game) return;
 
     try {
@@ -237,7 +239,7 @@ export const GameScreen: React.FC = () => {
                 {player.isFolded ? (
                   <Text style={styles.foldedText}>フォールド</Text>
                 ) : (
-                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 �          {lastAction && (
+                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 �          {lastAction && (
                   <Text style={styles.actionBadge}>
                     {lastAction === 'fold'
                       ? 'フォールド'
