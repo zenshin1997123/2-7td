@@ -178,7 +178,14 @@ export const GameScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>エラーが発生しました。新しいゲームを開始してください。</Text>
-        <TouchableOpacTurn = state.bettingOpen && state.toAct === 0;
+        <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
+          <Text style={styles.newGameText}>新しいゲーム</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const myTurn = state.bettingOpen && state.toAct === 0;
   const gamePhase = getGamePhase(state.street, state.drawPhase, state.bettingOpen, state.handOver);
   const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
   const betSize = state.street <= 1 ? 2 : 4;
