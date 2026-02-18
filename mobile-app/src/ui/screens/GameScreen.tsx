@@ -6,7 +6,7 @@ import { ActionButton } from '../components/ActionButton';
 import { Action, PlayerId } from '../../game/types';
 
 const safeNumber = (value: number | undefined | null): number => {
-  if (value === undefined || value === null || isNaN(value)) {
+  if (value === undefined || value === null || Number.isNaN(value)) {
     return 0;
   }
   return value;
@@ -21,8 +21,7 @@ const getGamePhase = (street: number, drawPhase: boolean, bettingOpen: boolean, 
     if (street === 3) return '3rd ドロー';
     return 'ドロー';
   }
-  if (bettingOpen) {
-  et === 2) return '2nd ベット';
+  if (bettingOpef (street === 2) return '2nd ベット';
     if (street === 3) return '3rd ベット';
     return 'ベッティング';
   }
@@ -44,7 +43,8 @@ export const GameScreen: React.FC = () => {
 
   useEffect(() => {
     if (!game) return;
-    const state = ga）
+
+    const state = game.getState();
     if (state.bettingOpen && !state.handOver && state.toAct !== null && state.toAct !== 0) {
       const timer = setTimeout(() => {
         try {
@@ -56,9 +56,7 @@ export const GameScreen: React.FC = () => {
         }
       }, 180);
 
-      return () => clearTimeout(timer);
-    }
-  }, [game, updateCounter]);
+      return () teCounter]);
 
   const startNewGame = () => {
     const newGame = new Game(100);
@@ -82,23 +80,21 @@ export const GameScreen: React.FC = () => {
       }
 
       game.playerAction(action);
-      ole.error('Action error:', error);
+      setUpdateCounter(prev => prev + 1);
+    } catch (error) {
+      console.error('Action error:', error);
       Alert.alert('エラー', 'アクション実行中にエラーが発生しました');
     }
   };
 
   const handleCardPress = (index: number) => {
     if (!game) return;
+
     const state = game.getState();
     if (!state.drawPhase) return;
 
     if (selectedCards.includes(index)) {
-      setSelectedCards(prev => prev.filter(i => i !== index));
-      return;
-    }
-
-    if (selectedCards.length < 5) {
-      setSelectedCards(prev => [...prev, index]);
+      setSelectedCards(prev => prerev => [...prev, index]);
     }
   };
 
@@ -113,11 +109,12 @@ export const GameScreen: React.FC = () => {
       game.playerDiscard(keepIndexes);
       game.cpuDiscard();
       game.afterAllDiscardAdvance();
+
       setSelectedCards([]);
       setUpdateCounter(prev => prev + 1);
     } catch (error) {
       console.error('Draw error:', error);
-      Alert.alert('エラー', 'カード交換
+      Alert.alert('エラー', 'カード交換中にエラーが発生し�andPat = () => {
     if (!game) return;
 
     try {
@@ -127,6 +124,7 @@ export const GameScreen: React.FC = () => {
       game.playerDiscard([0, 1, 2, 3, 4]);
       game.cpuDiscard();
       game.afterAllDiscardAdvance();
+
       setSelectedCards([]);
       setUpdateCounter(prev => prev + 1);
     } catch (error) {
@@ -142,11 +140,10 @@ export const GameScreen: React.FC = () => {
       const state = game.getState();
       if (state.street !== 3 || state.bettingOpen || state.drawPhase || state.handOver) return;
 
-      const result = game.showdown();
-      const isWinner = result.winners.includes(0);
+      const res= result.winners.includes(0);
       if (isWinner) {
         const payout = result.payouts.find(p => p.playerId === 0);
-        Alert 0}チップ獲得`);
+        Alert.alert('ショーダウン', `あなたの勝ち！${payout?.amount || 0}チップ獲得`);
       } else {
         Alert.alert('ショーダウン', 'あなたの負け...');
       }
@@ -173,14 +170,9 @@ export const GameScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>エラーが発生しました。新しいゲームを開始してください。</Text>
-        <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
-          <Text style={styles.newGameText}>新しいゲーム</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const myTurn = state(0, state.currentBet - state.players[0].contrib);
+        <TouchableOpacTurn = state.bettingOpen && state.toAct === 0;
+  const gamePhase = getGamePhase(state.street, state.drawPhase, state.bettingOpen, state.handOver);
+  const callAmount = Math.max(0, state.currentBet - state.players[0].contrib);
   const betSize = state.street <= 1 ? 2 : 4;
 
   const winnerDisplay: PlayerId[] | null = state.handOver && state.lastPayout ? state.lastPayout.winners : null;
@@ -197,14 +189,11 @@ export const GameScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>2-7 Triple Draw Poker</Text>
-        <TouchableOpacity style={styles.newGameButton} onPress={startNewGame}>
-          <Text style={styles.newGameText}>新しいゲーム</Text>
-        </TouchableOpacity>
-      </View>
-
-      {winnerDisplay && (
+        <TouchableOpacity style={styles.newGameButton} onPress={startNewGa {winnerDisplay && (
         <View style={styles.winnerBanner}>
-         t?.amounts[winnerDisplay.indexOf(0)] || 0}`
+          <Text style={styles.winnerBannerText}>
+            {winnerDisplay.includes(0)
+              ? `あなたの勝ち！ +${state.lastPayout?.amounts[winnerDisplay.indexOf(0)] || 0}`
               : 'あなたの負け'}
           </Text>
         </View>
@@ -225,18 +214,20 @@ export const GameScreen: React.FC = () => {
         </View>
       </View>
 
-      {state.bettingOpen && !state.handOver && (
-        <View style={styles.betInfoBar}>
-          <Text style={styles.betInfoText}>
+      {state.bettingOpen && !state.handOver &&      <Text style={styles.betInfoText}>
             現在ベット: {safeNumber(state.currentBet)} / {callAmount > 0 ? `コール: ${callAmount}` : 'チェック可能'} / サイズ: {betSize}
-          <, myTurn && styles.hintActive]}>{hintText}</Text>
+          </Text>
+        </View>
+      )}
+
+      <Text style={[styles.hintText, myTurn && styles.hintActive]}>{hintText}</Text>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.cpuGrid}>
           {state.players.slice(1).map((player, idx) => {
             const cpuId = (idx + 1) as PlayerId;
             const isActive = state.toAct === cpuId;
-            const lastAction = state.lastAction?.playerId === cpuId ? state.lastAction.action : null;
+         tion?.playerId === cpuId ? state.lastAction.action : null;
             const revealed = !!(state.handOver || winnerDisplay?.includes(cpuId));
 
             return (
@@ -246,8 +237,7 @@ export const GameScreen: React.FC = () => {
                 {player.isFolded ? (
                   <Text style={styles.foldedText}>フォールド</Text>
                 ) : (
-                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 🂠'}</Text>
-stAction && (
+                  <Text style={styles.hiddenCards}>{revealed ? 'ハンド公開' : '🂠 🂠 🂠 🂠 �          {lastAction && (
                   <Text style={styles.actionBadge}>
                     {lastAction === 'fold'
                       ? 'フォールド'
@@ -266,17 +256,17 @@ stAction && (
         </View>
 
         <View style={styles.playerArea}>
-          <Text style={styles.playerName}>あなた</Text>
-          <Text style={styles.stackText}>スタック: {safeNumber(state.players[0].stack)}</Text>
+          <Text style={    <Text style={styles.stackText}>スタック: {safeNumber(state.players[0].stack)}</Text>
           <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={handleCardPress} />
           {state.drawPhase && <Text style={styles.drawHint}>{selectedCards.length}枚選択中</Text>}
         </View>
       </ScrollView>
 
-      wPhase ? (
+      <View style={styles.controlsContainer}>
+        {state.drawPhase ? (
           <View style={styles.controls}>
             <ActionButton action="bet" label="カード交換" onPress={handleDraw} variant="info" disabled={state.handOver} />
-            <ActionButton action="bet" label="スタンドパット" onPress={handleStandPat} variant="success" disabled={state.handOver} />
+            <ActionButton action="bet" lableStandPat} variant="success" disabled={state.handOver} />
           </View>
         ) : (
           <View style={styles.controls}>
@@ -287,22 +277,24 @@ stAction && (
               <ActionButton
                 action={state.legalActions.includes('check') ? 'check' : 'call'}
                 label={state.legalActions.includes('check') ? 'チェック' : `コール(${callAmount})`}
-                onPress={() => handleAction(state.legalActions.includes('check') ? 'che
+                onPress={() => handleAction(state.legalActions.includes('check') ? 'check' : 'call')}
+                variant="success"
                 disabled={!myTurn || state.handOver}
               />
             )}
             {(state.legalActions.includes('bet') || state.legalActions.includes('raise')) && (
               <ActionButton
-                action={state.legalActions.includes('bet') ? 'bet' : 'raise'}
+     .legalActions.includes('bet') ? 'bet' : 'raise'}
                 label={state.legalActions.includes('bet') ? `ベット(${betSize})` : `レイズ(${betSize})`}
                 onPress={() => handleAction(state.legalActions.includes('bet') ? 'bet' : 'raise')}
                 variant="warning"
                 disabled={!myTurn || state.handOver}
               />
             )}
-            {state.street === 3 && !state.bettingOpen && !state.drawPhase && !stat& (
+            {state.street === 3 && !state.bettingOpen && !state.drawPhase && !state.handOver && (
               <ActionButton action="bet" label="ショーダウン" onPress={handleShowdown} variant="primary" />
-             </View>
+            )}
+          </View>
         )}
       </View>
     </View>
@@ -325,8 +317,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd700',
+    fontr: '#ffd700',
   },
   newGameButton: {
     backgroundColor: '#ffd700',
