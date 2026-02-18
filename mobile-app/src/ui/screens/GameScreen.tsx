@@ -73,12 +73,20 @@ export const GameScreen: React.FC = () => {
   // #endregion
 
   const onAction = (action: Action) => {
+    // #region agent log
+    fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: 'run-bet-loop', hypothesisId: 'H1', location: 'GameScreen.tsx:onAction:click', message: 'action button clicked', data: { action, myTurn, toAct: state.toAct, legalActions: state.legalActions, currentBet: state.currentBet, playerContrib: state.players[0].contrib }, timestamp: Date.now() }) }).catch(() => {});
+    // #endregion
+
     if (!myTurn) {
       Alert.alert('エラー', 'あなたのターンではありません');
       return;
     }
     try {
       game.playerAction(action);
+      const after = game.getState();
+      // #region agent log
+      fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ runId: 'run-bet-loop', hypothesisId: 'H2', location: 'GameScreen.tsx:onAction:after', message: 'action handled', data: { action, toAct: after.toAct, legalActions: after.legalActions, currentBet: after.currentBet, playerContrib: after.players[0].contrib, street: after.street, drawPhase: after.drawPhase }, timestamp: Date.now() }) }).catch(() => {});
+      // #endregion
       refresh();
     } catch (error) {
       console.error('Action error:', error);

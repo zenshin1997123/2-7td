@@ -39,6 +39,23 @@ export class Game {
   public lastAction: { playerId: PlayerId; action: Action } | null = null;
   public lastPayout: Payout | null = null;
 
+  private debugLog(hypothesisId: string, location: string, message: string, data: Record<string, unknown>): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/a882fc18-c173-4194-91b2-3fc89fa661a7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        runId: 'run-bet-loop',
+        hypothesisId,
+        location,
+        message,
+        data,
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }
+
   constructor(initialStack: number = 100) {
     this.pot = 0;
     this.deck = new Deck();
@@ -271,12 +288,35 @@ export class Game {
    * プレイヤーのアクション
    */
   playerAction(action: Action): void {
+    this.debugLog('H3', 'Game.ts:playerAction:entry', 'player action entry', {
+      action,
+      toAct: this.toAct,
+      bettingOpen: this.bettingOpen,
+      handOver: this.handOver,
+      currentBet: this.currentBet,
+      playerContrib: this.players[0].contrib,
+      street: this.street,
+      drawPhase: this.drawPhase,
+      legalActions: this.legalActionsForPlayer(),
+    });
+
     if (this.handOver || !this.bettingOpen || this.toAct !== 0) {
+      this.debugLog('H3', 'Game.ts:playerAction:guard', 'player action rejected by turn/phase guard', {
+        action,
+        toAct: this.toAct,
+        bettingOpen: this.bettingOpen,
+        handOver: this.handOver,
+      });
       return;
     }
 
     const player = this.players[0];
     if (player.isFolded || player.isAllIn) {
+      this.debugLog('H3', 'Game.ts:playerAction:guard', 'player action rejected by player status', {
+        action,
+        isFolded: player.isFolded,
+        isAllIn: player.isAllIn,
+      });
       return;
     }
 
@@ -300,6 +340,12 @@ export class Game {
         this.betOrRaise(0);
         this.advanceToNextActor();
       } else {
+        this.debugLog('H4', 'Game.ts:playerAction:invalid', 'invalid action while facing bet', {
+          action,
+          currentBet: this.currentBet,
+          playerContrib: player.contrib,
+          raisesThisRound: this.raisesThisRound,
+        });
         return;
       }
     } else {
@@ -311,12 +357,28 @@ export class Game {
         this.betOrRaise(0);
         this.advanceToNextActor();
       } else {
+        this.debugLog('H4', 'Game.ts:playerAction:invalid', 'invalid action in no-bet branch', {
+          action,
+          currentBet: this.currentBet,
+          playerContrib: player.contrib,
+        });
         return;
       }
     }
 
     // CPUの自動進行
     this.processCPUActions();
+    this.debugLog('H5', 'Game.ts:playerAction:exit', 'player action completed', {
+      action,
+      toAct: this.toAct,
+      bettingOpen: this.bettingOpen,
+      handOver: this.handOver,
+      currentBet: this.currentBet,
+      playerContrib: this.players[0].contrib,
+      street: this.street,
+      drawPhase: this.drawPhase,
+      legalActions: this.legalActionsForPlayer(),
+    });
   }
 
   /**
