@@ -184,8 +184,9 @@ export const GameScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.infoText}>ポット: {safeNumber(state.pot)} / フェーズ: {phaseText(state.street, state.drawPhase, state.bettingOpen, state.handOver)}</Text>
-      <Text style={styles.infoText}>現在アクター: {state.toAct === null ? '-' : state.toAct === 0 ? 'あなた' : `CPU${state.toAct}`}</Text>
+      <Text style={styles.infoText}>
+        フェーズ: {phaseText(state.street, state.drawPhase, state.bettingOpen, state.handOver)} / 現在アクター: {state.toAct === null ? '-' : state.toAct === 0 ? 'あなた' : `CPU${state.toAct}`}
+      </Text>
       {state.handOver && state.lastPayout && (
         <View style={styles.winnerBanner}>
           <Text style={styles.winnerText}>勝者: {winnerNames}</Text>
@@ -193,28 +194,44 @@ export const GameScreen: React.FC = () => {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {state.players.slice(1).map((player, idx) => {
-          const cpuId = (idx + 1) as PlayerId;
-          const isActive = state.toAct === cpuId;
-          return (
-            <View key={player.id} style={[styles.cpuRow, isActive && styles.activeRow]}>
-              <Text style={styles.cpuText}>{player.name} ({positionLabel(cpuId, state.dealerPosition)}) / スタック: {safeNumber(player.stack)}</Text>
-              {state.handOver && !player.isFolded && player.hand.length > 0 ? (
-                <Hand cards={player.hand} />
-              ) : (
-                <Text style={styles.cpuText}>{player.isFolded ? 'フォールド' : '🂠 🂠 🂠 🂠 🂠'}</Text>
-              )}
-            </View>
-          );
-        })}
+      <View style={styles.tableWrap}>
+        <View style={styles.tableOval}>
+          <View style={styles.centerPot}>
+            <Text style={styles.centerPotLabel}>POT</Text>
+            <Text style={styles.centerPotAmount}>{safeNumber(state.pot)}</Text>
+            <Text style={styles.centerPotSub}>Bet {safeNumber(state.currentBet)}</Text>
+          </View>
 
-        <View style={styles.playerArea}>
-          <Text style={styles.playerText}>あなた ({positionLabel(0, state.dealerPosition)}) / スタック: {safeNumber(state.players[0].stack)}</Text>
-          <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={onCardPress} />
-          {state.drawPhase && <Text style={styles.infoText}>選択中: {selectedCards.length}枚</Text>}
+          {([3, 2, 1, 5, 4] as PlayerId[]).map(cpuId => {
+            const player = state.players[cpuId];
+            const isActive = state.toAct === cpuId;
+            const showCards = state.handOver && !player.isFolded && player.hand.length > 0;
+            const seatStyle =
+              cpuId === 3 ? styles.seatTop :
+              cpuId === 2 ? styles.seatTopRight :
+              cpuId === 1 ? styles.seatBottomRight :
+              cpuId === 5 ? styles.seatBottomLeft : styles.seatTopLeft;
+
+            return (
+              <View key={cpuId} style={[styles.seat, seatStyle, isActive && styles.activeSeat]}>
+                <Text style={styles.seatName}>{player.name}</Text>
+                <Text style={styles.seatMeta}>{positionLabel(cpuId, state.dealerPosition)} / {safeNumber(player.stack)}</Text>
+                {showCards ? (
+                  <Hand cards={player.hand} />
+                ) : (
+                  <Text style={styles.seatCards}>{player.isFolded ? 'Fold' : '🂠 🂠 🂠 🂠 🂠'}</Text>
+                )}
+              </View>
+            );
+          })}
         </View>
-      </ScrollView>
+      </View>
+
+      <View style={styles.playerArea}>
+        <Text style={styles.playerText}>あなた ({positionLabel(0, state.dealerPosition)}) / スタック: {safeNumber(state.players[0].stack)}</Text>
+        <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={onCardPress} />
+        {state.drawPhase && <Text style={styles.infoText}>選択中: {selectedCards.length}枚</Text>}
+      </View>
 
       <View style={styles.controls}>
         {state.drawPhase ? (
@@ -254,7 +271,7 @@ export const GameScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f4c3a' },
+  container: { flex: 1, backgroundColor: '#111827' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -262,9 +279,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 8,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: '#1f2937',
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#ffd700' },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#fbbf24' },
   newGameButton: { backgroundColor: '#ffd700', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16 },
   newGameText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
   loadingText: { color: '#fff', fontSize: 18, textAlign: 'center', marginTop: 50 },
@@ -280,18 +297,64 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 215, 0, 0.15)',
   },
   winnerText: { color: '#ffd700', fontSize: 13, fontWeight: 'bold' },
-  scrollContent: { padding: 10, paddingBottom: 16 },
-  cpuRow: { backgroundColor: 'rgba(0,0,0,0.25)', padding: 8, borderRadius: 8, marginBottom: 8 },
-  activeRow: { borderWidth: 2, borderColor: '#4ecdc4' },
-  cpuText: { color: '#fff', fontSize: 13 },
-  playerArea: {
-    marginTop: 10,
+  tableWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  tableOval: {
+    width: '100%',
+    maxWidth: 980,
+    height: 370,
+    borderRadius: 240,
+    backgroundColor: '#4c1d95',
+    borderWidth: 10,
+    borderColor: '#7c3aed',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerPot: {
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+  },
+  centerPotLabel: { color: '#e5e7eb', fontSize: 11 },
+  centerPotAmount: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  centerPotSub: { color: '#cbd5e1', fontSize: 11 },
+  seat: {
+    position: 'absolute',
+    width: 180,
+    minHeight: 72,
+    borderRadius: 10,
+    backgroundColor: 'rgba(17,24,39,0.85)',
+    borderWidth: 1,
+    borderColor: '#374151',
+    padding: 6,
+  },
+  activeSeat: { borderColor: '#22d3ee', borderWidth: 2 },
+  seatTop: { top: 10, left: '50%', marginLeft: -90 },
+  seatTopLeft: { top: 70, left: 20 },
+  seatTopRight: { top: 70, right: 20 },
+  seatBottomLeft: { bottom: 36, left: 20 },
+  seatBottomRight: { bottom: 36, right: 20 },
+  seatName: { color: '#fef3c7', fontWeight: 'bold', fontSize: 13 },
+  seatMeta: { color: '#d1d5db', fontSize: 11, marginBottom: 2 },
+  seatCards: { color: '#e5e7eb', fontSize: 13 },
+  playerArea: {
+    marginTop: 6,
+    alignItems: 'center',
+    backgroundColor: 'rgba(17,24,39,0.9)',
+    padding: 10,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#ffd700',
+    marginHorizontal: 10,
   },
   playerText: { color: '#ffd700', fontSize: 15, fontWeight: 'bold' },
   controls: {
