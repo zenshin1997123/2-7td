@@ -58,6 +58,16 @@ export const GameScreen: React.FC = () => {
     }
   }, [game, tick]);
 
+  // プレイヤーがフォールドしている場合はCPUだけで自動的にハンドを完結させる
+  useEffect(() => {
+    if (!game) return;
+    const s = game.getState();
+    if (s.players[0].isFolded && !s.handOver) {
+      game.autoRunToEndIfPlayerFolded();
+      refresh();
+    }
+  }, [game, tick]);
+
   useEffect(() => {
     if (!game) return;
     const s = game.getState();

@@ -544,6 +544,44 @@ export class Game {
   }
 
   /**
+   * プレイヤーがフォールドしている場合、CPUだけでハンドを最後まで自動進行させる
+   */
+  autoRunToEndIfPlayerFolded(): void {
+    const hero = this.players[0];
+    if (!hero.isFolded || this.handOver) {
+      return;
+    }
+
+    // 無限ループ防止のため安全ガード（最大数ステップ）
+    let steps = 0;
+    while (!this.handOver && steps < 20) {
+      steps += 1;
+
+      // ベッティング中でアクターがCPUならCPUに任せる
+      if (this.bettingOpen && this.toAct !== null && this.toAct !== 0) {
+        this.cpuAutoProgress();
+        continue;
+      }
+
+      // ドローフェーズならCPUだけでドローして次のラウンドへ
+      if (this.drawPhase) {
+        this.cpuDiscard();
+        this.afterAllDiscardAdvance();
+        continue;
+      }
+
+      // 最終ストリートでベッティングもドローも終わっているならショーダウン
+      if (this.street === 3 && !this.bettingOpen && !this.drawPhase && !this.handOver) {
+        this.showdown();
+        break;
+      }
+
+      // 上記いずれにも当てはまらない場合は抜ける
+      break;
+    }
+  }
+
+  /**
    * プレイヤーのドロー
    */
   playerDiscard(keepIndexes: number[]): void {
