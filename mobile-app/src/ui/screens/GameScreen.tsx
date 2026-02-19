@@ -123,7 +123,7 @@ export const GameScreen: React.FC = () => {
   };
 
   const onCardPress = (index: number) => {
-    if (!state.drawPhase) return;
+    if (!state.drawPhase || state.players[0].isFolded) return;
     if (selectedCards.includes(index)) {
       setSelectedCards(prev => prev.filter(i => i !== index));
       return;
@@ -134,7 +134,7 @@ export const GameScreen: React.FC = () => {
   };
 
   const onDraw = () => {
-    if (!state.drawPhase || state.handOver) return;
+    if (!state.drawPhase || state.handOver || state.players[0].isFolded) return;
     try {
       const keepIndexes = [0, 1, 2, 3, 4].filter(i => !selectedCards.includes(i));
       game.playerDiscard(keepIndexes);
@@ -149,7 +149,7 @@ export const GameScreen: React.FC = () => {
   };
 
   const onStandPat = () => {
-    if (!state.drawPhase || state.handOver) return;
+    if (!state.drawPhase || state.handOver || state.players[0].isFolded) return;
     try {
       game.playerDiscard([0, 1, 2, 3, 4]);
       game.cpuDiscard();
@@ -229,12 +229,12 @@ export const GameScreen: React.FC = () => {
 
       <View style={styles.playerArea}>
         <Text style={styles.playerText}>あなた ({positionLabel(0, state.dealerPosition)}) / スタック: {safeNumber(state.players[0].stack)}</Text>
-        <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={onCardPress} />
-        {state.drawPhase && <Text style={styles.infoText}>選択中: {selectedCards.length}枚</Text>}
+        <Hand cards={state.players[0].hand} selected={selectedCards} onCardPress={state.players[0].isFolded ? undefined : onCardPress} />
+        {state.drawPhase && !state.players[0].isFolded && <Text style={styles.infoText}>選択中: {selectedCards.length}枚</Text>}
       </View>
 
       <View style={styles.controls}>
-        {state.drawPhase ? (
+        {state.drawPhase && !state.players[0].isFolded ? (
           <>
             <ActionButton action="bet" label="カード交換" onPress={onDraw} variant="info" disabled={state.handOver} />
             <ActionButton action="bet" label="スタンドパット" onPress={onStandPat} variant="success" disabled={state.handOver} />
