@@ -156,6 +156,54 @@ export class Game {
   }
 
   /**
+   * 次のハンドを開始（スタックを保持したまま）
+   */
+  startNextHand(): void {
+    // スタックが0のプレイヤーを除外（オプション: 必要に応じて実装）
+    // 今回は全員が続行できると仮定
+
+    // ディーラーボタンを次のプレイヤーに移動
+    this.dealerPosition = (this.dealerPosition + 1) % 6;
+
+    // ゲーム状態をリセット
+    this.pot = 0;
+    this.street = 0;
+    this.turn = 0;
+    this.currentBet = 0;
+    this.raisesThisRound = 0;
+    this.toAct = null;
+    this.bettingOpen = false;
+    this.drawPhase = false;
+    this.handOver = false;
+    this.checkPending.clear();
+    this.actedThisRound.clear();
+    this.lastAction = null;
+    this.lastPayout = null;
+
+    // 全プレイヤーの状態をリセット（スタックは保持）
+    for (const player of this.players) {
+      player.contrib = 0;
+      player.isFolded = false;
+      player.isAllIn = false;
+      player.hand = [];
+    }
+
+    // 新しいデッキを作成
+    this.deck = new Deck();
+    this.hands.clear();
+
+    // カードを配る
+    for (const player of this.players) {
+      const hand = new Hand(this.deck.draw(5));
+      this.hands.set(player.id, hand);
+      player.hand = [...hand.cards];
+    }
+
+    // ブラインドをポストしてプリドローベッティングへ
+    this.postBlindsStartRound();
+  }
+
+  /**
    * ラウンドのコントリビューションをリセット
    */
   private resetRoundContrib(): void {

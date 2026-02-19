@@ -80,6 +80,21 @@ export const GameScreen: React.FC = () => {
     }
   }, [game, tick]);
 
+  // ハンド終了時に自動的に次のハンドを開始（スタックを保持）
+  useEffect(() => {
+    if (!game) return;
+    const s = game.getState();
+    if (s.handOver && s.lastPayout) {
+      // 少し待ってから次のハンドを開始（勝者表示を見せるため）
+      const timer = setTimeout(() => {
+        game.startNextHand();
+        setSelectedCards([]);
+        refresh();
+      }, 2000); // 2秒後に次のハンド開始
+      return () => clearTimeout(timer);
+    }
+  }, [game, tick]);
+
   const startNewGame = () => {
     const g = new Game(100);
     setGame(g);
